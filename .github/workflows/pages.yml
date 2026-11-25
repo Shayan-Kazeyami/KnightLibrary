@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
   pages: write
   id-token: write
 
@@ -27,25 +26,15 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Upload static site
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        id: archive
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
-      - name: Wait for the Pages artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for attempt in {1..15}; do
-            artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
-              --jq '.artifacts[] | select(.name == "github-pages" and .expired == false) | .id') || artifact=""
-            if [[ -n "$artifact" ]]; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "::error::The Pages artifact did not become available"
-          exit 1
-      - name: Deploy to GitHub Pages
+      - name: Deploy the uploaded archive
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_ID: ${{ steps.archive.outputs.artifact_id }}
+        run: node .github/scripts/deploy-pages.mjs
